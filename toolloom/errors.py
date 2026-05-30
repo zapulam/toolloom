@@ -9,12 +9,20 @@ class ToolSchemaError(ToolloomError):
     """Raised when a callable cannot be converted into a supported tool schema."""
 
 
+class SkillSchemaError(ToolloomError):
+    """Raised when a callable cannot be converted into a supported skill."""
+
+
 class ToolValidationError(ToolloomError):
     """Raised when tool input validation fails."""
 
 
 class ToolExecutionError(ToolloomError):
     """Raised when a tool callable fails during execution."""
+
+
+class SkillExecutionError(ToolloomError):
+    """Raised when a skill callable fails during execution."""
 
 
 class ToolTimeoutError(ToolExecutionError):
@@ -25,8 +33,16 @@ class ToolRegistrationError(ToolloomError):
     """Raised when a tool cannot be registered in a registry."""
 
 
+class SkillRegistrationError(ToolloomError):
+    """Raised when a skill cannot be registered in a registry."""
+
+
 class ToolNotFoundError(ToolloomError, KeyError):
     """Raised when a named tool is not present in a registry."""
+
+
+class SkillNotFoundError(ToolloomError, KeyError):
+    """Raised when a named skill is not present in a registry."""
 
 
 class ToolAdapterError(ToolloomError):

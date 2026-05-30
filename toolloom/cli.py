@@ -8,8 +8,10 @@ import json
 from typing import Any
 
 from .decorators import get_tool_definition
+from .errors import SkillSchemaError
 from .lint import lint_registry, lint_tool
 from .registry import ToolRegistry
+from .skills import SkillRegistry, get_skill_definition
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -51,6 +53,12 @@ def _load_target(path: str) -> Any:
 def _inspect_target(target: Any) -> Any:
     if isinstance(target, ToolRegistry):
         return [definition.spec.model_dump(mode="json") for definition in target.list()]
+    if isinstance(target, SkillRegistry):
+        return [definition.spec.model_dump(mode="json") for definition in target.list()]
+    try:
+        return get_skill_definition(target).spec.model_dump(mode="json")
+    except SkillSchemaError:
+        pass
     return get_tool_definition(target).spec.model_dump(mode="json")
 
 

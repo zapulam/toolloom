@@ -28,6 +28,15 @@ def to_fastmcp(
     return server
 
 
+def add_to_fastmcp(server: Any, definitions: Iterable[ToolDefinition]) -> Any:
+    """Register Toolloom definitions on an existing FastMCP server."""
+
+    for definition in definitions:
+        _register_tool(server, definition)
+
+    return server
+
+
 def _register_tool(server: Any, definition: ToolDefinition) -> None:
     spec = definition.spec
     metadata = {

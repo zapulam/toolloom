@@ -59,6 +59,7 @@ and adapter exports.
   auth, timeouts, idempotency, side effects, and arbitrary metadata.
 - A `ToolDefinition` wrapper for validated sync and async invocation.
 - A `ToolRegistry` for grouping tools and exporting them to optional adapters.
+- A `@skill` decorator and `SkillRegistry` for markdown-backed agent guidance.
 - Non-blocking quality linting for tool descriptions, type hints, naming, and
   safety metadata.
 
@@ -69,9 +70,10 @@ primitives. The problem starts when the same business action is declared
 separately in every runtime: schemas drift, descriptions diverge, and
 framework-specific wrappers become the accidental source of truth.
 
-Toolloom makes the tool contract the source of truth. Framework adapters are
-intentionally thin, so integrations can evolve without rewriting your core tool
-definitions.
+Toolloom makes the tool and skill contracts the source of truth. Tools are typed
+functions agents can execute. Skills are zero-argument functions that return
+markdown instructions agents can read. Framework adapters are intentionally thin,
+so integrations can evolve without rewriting your core definitions.
 
 ## Installation
 
@@ -99,7 +101,7 @@ python -m pip install -e ".[dev]"
 ## Quick Start
 
 ```python
-from toolloom import ToolRegistry, get_tool_definition, get_tool_spec, tool
+from toolloom import SkillRegistry, ToolRegistry, get_tool_definition, get_tool_spec, skill, tool
 
 
 @tool(
@@ -114,11 +116,22 @@ def search_customers(query: str, limit: int = 10) -> list[dict]:
     return []
 
 
+@skill(
+    name="customer_research_playbook",
+    description="Read the markdown playbook for customer research tasks.",
+    markdown_path="skills/customer_research.md",
+)
+def customer_research_playbook() -> str:
+    return "# Customer research\n\nCheck account status before drafting outreach."
+
+
 spec = get_tool_spec(search_customers)
 result = get_tool_definition(search_customers).invoke({"query": "Ada"})
 
 registry = ToolRegistry()
 registry.register(search_customers)
+
+skills = SkillRegistry([customer_research_playbook])
 ```
 
 The decorated function remains directly callable, so adopting Toolloom does not
@@ -128,16 +141,59 @@ change ordinary Python usage:
 search_customers("Ada", limit=5)
 ```
 
-Toolloom also attaches `__toolloom_spec__` and `__toolloom_definition__`, but
-public code should prefer `get_tool_spec()` and `get_tool_definition()`.
+Toolloom also attaches implementation attributes for tools and skills, but public
+code should prefer helper functions such as `get_tool_spec()` and registry APIs.
 
 ## Export Targets
 
+`ToolRegistry` is the source-of-truth collection for executable functions.
+`SkillRegistry` is the source-of-truth collection for markdown-backed guidance.
+Frameworks should receive the output of adapter methods, not registry objects
+themselves:
+
+This means using `registry.to_fastmcp()` instead of `FastMCP(tools=registry)`,
+and `Agent(..., tools=registry.to_openai_agents())` instead of
+`Agent(..., tools=registry)`.
+
 ```python
-mcp_server = registry.to_fastmcp(name="CRM Tools")
-openai_tools = registry.to_openai_agents()
-langchain_tools = registry.to_langchain()
-langgraph_tools = registry.to_langgraph()
+tool_registry = ToolRegistry([search_customers])
+skill_registry = SkillRegistry([customer_research_playbook])
+```
+
+For example, add both executable tools and markdown skills to each framework's
+native API:
+
+```python
+from agents import Agent
+
+openai_tools = tool_registry.to_openai_agents() + skill_registry.to_openai_agents()
+agent = Agent(
+    name="CRM Agent",
+    tools=openai_tools,
+)
+```
+
+```python
+# `to_fastmcp()` creates the FastMCP app and adds executable tools.
+mcp_server = tool_registry.to_fastmcp(name="CRM Tools")
+skill_registry.add_to_fastmcp(mcp_server)
+mcp_server.run()
+```
+
+```python
+from langchain.agents import AgentExecutor, create_react_agent
+
+langchain_tools = tool_registry.to_langchain() + skill_registry.to_langchain()
+langchain_agent = create_react_agent(llm, langchain_tools, prompt)
+agent_executor = AgentExecutor(agent=langchain_agent, tools=langchain_tools)
+```
+
+```python
+from langgraph.prebuilt import ToolNode, create_react_agent
+
+langgraph_tools = tool_registry.to_langgraph() + skill_registry.to_langgraph()
+langgraph_agent = create_react_agent(model=model, tools=langgraph_tools)
+tool_node = ToolNode(langgraph_tools)
 ```
 
 <table>
@@ -149,12 +205,12 @@ langgraph_tools = registry.to_langgraph()
   <tr>
     <td>FastMCP / MCP</td>
     <td><code>toolloom[mcp]</code></td>
-    <td>Creates a <code>FastMCP</code> server and registers Toolloom callables.</td>
+    <td>Creates a <code>FastMCP</code> server and registers tools plus skill readers.</td>
   </tr>
   <tr>
     <td>OpenAI Agents SDK</td>
     <td><code>toolloom[openai]</code></td>
-    <td>Builds <code>agents.FunctionTool</code> objects from Toolloom schemas.</td>
+    <td>Builds <code>agents.FunctionTool</code> objects for tools and skills.</td>
   </tr>
   <tr>
     <td>LangChain</td>
@@ -168,12 +224,15 @@ langgraph_tools = registry.to_langgraph()
   </tr>
 </table>
 
-FastMCP uses `from fastmcp import FastMCP` and registers each callable with
-`mcp.tool(...)`. LangChain uses `langchain_core.tools.StructuredTool`. LangGraph
+FastMCP uses `from fastmcp import FastMCP` internally and registers each callable
+with `mcp.tool(...)`. OpenAI Agents SDK exports are `agents.FunctionTool`
+instances, so executable tools and markdown skills can be passed together as
+`Agent(..., tools=tool_registry.to_openai_agents() + skill_registry.to_openai_agents())`.
+LangChain exports are `langchain_core.tools.StructuredTool` instances. LangGraph
 delegates to LangChain-compatible tools and also exposes
-`registry.to_langgraph_tool_node()` when `langgraph.prebuilt.ToolNode` is
-installed. OpenAI Agents SDK uses `agents.FunctionTool` so Toolloom can pass its
-own JSON schema and invocation wrapper.
+`registry.to_langgraph_tool_node()` for tool registries and
+`skill_registry.to_langgraph_tool_node()` for skill registries when
+`langgraph.prebuilt.ToolNode` is installed.
 
 If an optional dependency is missing, adapters raise `MissingOptionalDependencyError`
 with an install command.

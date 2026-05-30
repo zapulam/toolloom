@@ -3,6 +3,10 @@
 from .decorators import get_tool_definition, get_tool_spec, tool
 from .errors import (
     MissingOptionalDependencyError,
+    SkillExecutionError,
+    SkillNotFoundError,
+    SkillRegistrationError,
+    SkillSchemaError,
     ToolAdapterError,
     ToolExecutionError,
     ToolloomError,
@@ -14,10 +18,18 @@ from .errors import (
 )
 from .lint import ToolLintIssue, lint_registry, lint_tool
 from .registry import ToolRegistry
-from .spec import ToolDefinition, ToolSpec
+from .skills import SkillRegistry, get_skill_definition, get_skill_spec, skill
+from .spec import SkillDefinition, SkillSpec, ToolDefinition, ToolSpec
 
 __all__ = [
     "MissingOptionalDependencyError",
+    "SkillDefinition",
+    "SkillExecutionError",
+    "SkillNotFoundError",
+    "SkillRegistrationError",
+    "SkillRegistry",
+    "SkillSchemaError",
+    "SkillSpec",
     "ToolAdapterError",
     "ToolDefinition",
     "ToolExecutionError",
@@ -30,9 +42,12 @@ __all__ = [
     "ToolTimeoutError",
     "ToolValidationError",
     "ToolloomError",
+    "get_skill_definition",
+    "get_skill_spec",
     "get_tool_definition",
     "get_tool_spec",
     "lint_registry",
     "lint_tool",
+    "skill",
     "tool",
 ]

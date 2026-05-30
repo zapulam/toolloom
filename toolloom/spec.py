@@ -5,13 +5,13 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import inspect
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from .errors import ToolExecutionError, ToolTimeoutError, ToolValidationError
+from .errors import SkillExecutionError, ToolExecutionError, ToolTimeoutError, ToolValidationError
 
 
 class ToolSpec(BaseModel):
@@ -30,6 +30,19 @@ class ToolSpec(BaseModel):
     requires_auth: bool = False
     timeout: float | None = None
     experimental: bool = False
+    callable_path: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SkillSpec(BaseModel):
+    """Serializable, framework-neutral description of a markdown-backed skill."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: str
+    markdown_path: str | None = None
+    tags: list[str] = Field(default_factory=list)
     callable_path: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -113,3 +126,52 @@ class ToolDefinition:
             except concurrent.futures.TimeoutError as exc:
                 future.cancel()
                 raise ToolTimeoutError(f"Tool '{self.spec.name}' timed out.") from exc
+
+
+@dataclass(frozen=True, slots=True)
+class SkillDefinition:
+    """A `SkillSpec` paired with a callable that returns markdown instructions."""
+
+    spec: SkillSpec
+    func: Callable[..., Any]
+
+    @property
+    def is_async(self) -> bool:
+        """Whether the underlying skill callable is asynchronous."""
+
+        return inspect.iscoroutinefunction(self.func)
+
+    def invoke(self) -> str:
+        """Synchronously invoke a markdown-backed skill."""
+
+        if self.is_async:
+            raise SkillExecutionError(
+                f"Skill '{self.spec.name}' is async and must be called with ainvoke()."
+            )
+
+        try:
+            result = self.func()
+        except Exception as exc:
+            raise SkillExecutionError(f"Skill '{self.spec.name}' failed: {exc}") from exc
+
+        return self._validate_result(result)
+
+    async def ainvoke(self) -> str:
+        """Asynchronously invoke a markdown-backed skill."""
+
+        try:
+            if self.is_async:
+                result = await cast(Awaitable[Any], self.func())
+            else:
+                result = self.func()
+        except Exception as exc:
+            raise SkillExecutionError(f"Skill '{self.spec.name}' failed: {exc}") from exc
+
+        return self._validate_result(result)
+
+    def _validate_result(self, result: Any) -> str:
+        if not isinstance(result, str):
+            raise SkillExecutionError(
+                f"Skill '{self.spec.name}' must return markdown text as a string."
+            )
+        return result
