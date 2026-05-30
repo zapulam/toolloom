@@ -1,8 +1,6 @@
 <p align="center">
-  <img src=".assets/toolloom.png" alt="Toolloom logo" width="220">
+  <img src=".assets/toolloom.png" alt="Toolloom logo" width="812">
 </p>
-
-<h1 align="center">Toolloom</h1>
 
 <p align="center">
   <strong>Define AI tools once. Export them everywhere.</strong>
