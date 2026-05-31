@@ -86,6 +86,27 @@ class ToolRegistry:
 
         return to_langchain(self.list())
 
+    def to_pydantic_ai(self) -> builtins.list[Any]:
+        """Export the registry to PydanticAI tools."""
+
+        from .adapters.pydantic_ai import to_pydantic_ai
+
+        return to_pydantic_ai(self.list())
+
+    def to_crewai(self) -> builtins.list[Any]:
+        """Export the registry to CrewAI tools."""
+
+        from .adapters.crewai import to_crewai
+
+        return to_crewai(self.list())
+
+    def to_google_adk(self) -> builtins.list[Any]:
+        """Export the registry to Google ADK tools."""
+
+        from .adapters.google_adk import to_google_adk
+
+        return to_google_adk(self.list())
+
     def to_langgraph(self) -> builtins.list[Any]:
         """Export the registry to LangGraph-compatible LangChain tools."""
 

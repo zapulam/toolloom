@@ -17,15 +17,16 @@
   <a href="#development"><img alt="pytest" src="https://img.shields.io/badge/tests-pytest-0a9edc"></a>
   <a href="#development"><img alt="Ruff" src="https://img.shields.io/badge/lint-ruff-261230"></a>
   <a href="#development"><img alt="mypy" src="https://img.shields.io/badge/types-mypy-2a6db2"></a>
-  <a href="#installation"><img alt="Adapters" src="https://img.shields.io/badge/adapters-FastMCP%20%7C%20OpenAI%20%7C%20LangChain%20%7C%20LangGraph-4b5563"></a>
+  <a href="#installation"><img alt="Adapters" src="https://img.shields.io/badge/adapters-FastMCP%20%7C%20OpenAI%20%7C%20LangChain%20%7C%20LangGraph%20%7C%20PydanticAI%20%7C%20CrewAI%20%7C%20Google%20ADK-4b5563"></a>
   <a href="#license"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
 ---
 
-Toolloom turns a Python callable plus metadata into a stable, serializable
-`ToolSpec`. That spec stays independent of any one agent framework, while thin
-adapters export it to FastMCP, OpenAI Agents SDK, LangChain, and LangGraph.
+Toolloom turns Python callables plus metadata into stable, serializable tool and
+skill contracts. Those contracts stay independent of any one agent framework,
+while thin adapters export them to FastMCP, OpenAI Agents SDK, LangChain,
+LangGraph, PydanticAI, CrewAI, and Google ADK.
 
 It is built for teams that want one canonical place for tool names,
 descriptions, schemas, validation, runtime behavior, errors, safety metadata,
@@ -43,7 +44,8 @@ and adapter exports.
     </td>
     <td width="25%">
       <strong>Export to frameworks</strong><br>
-      Bridge to FastMCP, OpenAI Agents SDK, LangChain, and LangGraph.
+      Bridge to FastMCP, OpenAI Agents SDK, LangChain, LangGraph, PydanticAI,
+      CrewAI, and Google ADK.
     </td>
     <td width="25%">
       <strong>Lint tool quality</strong><br>
@@ -65,10 +67,10 @@ and adapter exports.
 
 ## Why Toolloom?
 
-FastMCP, OpenAI Agents SDK, LangChain, and LangGraph all provide useful tool
-primitives. The problem starts when the same business action is declared
-separately in every runtime: schemas drift, descriptions diverge, and
-framework-specific wrappers become the accidental source of truth.
+FastMCP, OpenAI Agents SDK, LangChain, LangGraph, PydanticAI, CrewAI, and Google
+ADK all provide useful tool primitives. The problem starts when the same business
+action is declared separately in every runtime: schemas drift, descriptions
+diverge, and framework-specific wrappers become the accidental source of truth.
 
 Toolloom makes the tool and skill contracts the source of truth. Tools are typed
 functions agents can execute. Skills are zero-argument functions that return
@@ -89,6 +91,9 @@ Install optional integrations only when you need them:
 pip install "toolloom[mcp]"
 pip install "toolloom[openai]"
 pip install "toolloom[langchain]"
+pip install "toolloom[pydantic-ai]"
+pip install "toolloom[crewai]"
+pip install "toolloom[google-adk]"
 pip install "toolloom[all]"
 ```
 
@@ -196,6 +201,37 @@ langgraph_agent = create_react_agent(model=model, tools=langgraph_tools)
 tool_node = ToolNode(langgraph_tools)
 ```
 
+```python
+from pydantic_ai import Agent
+
+pydantic_ai_tools = tool_registry.to_pydantic_ai() + skill_registry.to_pydantic_ai()
+agent = Agent("openai:gpt-4o-mini", tools=pydantic_ai_tools)
+```
+
+```python
+from crewai import Agent
+
+crewai_tools = tool_registry.to_crewai() + skill_registry.to_crewai()
+agent = Agent(
+    role="CRM Agent",
+    goal="Research customers and follow the markdown playbook.",
+    backstory="You use Toolloom tools for actions and Toolloom skills for guidance.",
+    tools=crewai_tools,
+)
+```
+
+```python
+from google.adk.agents import Agent
+
+adk_tools = tool_registry.to_google_adk() + skill_registry.to_google_adk()
+agent = Agent(
+    name="crm_agent",
+    model="gemini-2.0-flash",
+    instruction="Use tools for actions and skills for guidance.",
+    tools=adk_tools,
+)
+```
+
 <table>
   <tr>
     <th>Target</th>
@@ -222,6 +258,21 @@ tool_node = ToolNode(langgraph_tools)
     <td><code>toolloom[langchain]</code></td>
     <td>Returns LangChain-compatible tools or a <code>ToolNode</code>.</td>
   </tr>
+  <tr>
+    <td>PydanticAI</td>
+    <td><code>toolloom[pydantic-ai]</code></td>
+    <td>Builds <code>pydantic_ai.Tool</code> objects for tools and skills.</td>
+  </tr>
+  <tr>
+    <td>CrewAI</td>
+    <td><code>toolloom[crewai]</code></td>
+    <td>Builds CrewAI <code>BaseTool</code> objects for tools and skills.</td>
+  </tr>
+  <tr>
+    <td>Google ADK</td>
+    <td><code>toolloom[google-adk]</code></td>
+    <td>Builds Google ADK <code>FunctionTool</code> objects for tools and skills.</td>
+  </tr>
 </table>
 
 FastMCP uses `from fastmcp import FastMCP` internally and registers each callable
@@ -232,7 +283,9 @@ LangChain exports are `langchain_core.tools.StructuredTool` instances. LangGraph
 delegates to LangChain-compatible tools and also exposes
 `registry.to_langgraph_tool_node()` for tool registries and
 `skill_registry.to_langgraph_tool_node()` for skill registries when
-`langgraph.prebuilt.ToolNode` is installed.
+`langgraph.prebuilt.ToolNode` is installed. PydanticAI exports
+`pydantic_ai.Tool` objects. CrewAI exports `crewai.tools.BaseTool` instances.
+Google ADK exports `google.adk.tools.FunctionTool` objects.
 
 If an optional dependency is missing, adapters raise `MissingOptionalDependencyError`
 with an install command.

@@ -30,3 +30,29 @@ def test_langchain_adapter_missing_dependency(monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(MissingOptionalDependencyError):
         ToolRegistry([add]).to_langchain()
+
+
+@pytest.mark.parametrize(
+    ("module_name", "export_method"),
+    [
+        ("pydantic_ai", "to_pydantic_ai"),
+        ("crewai.tools", "to_crewai"),
+        ("google.adk.tools", "to_google_adk"),
+    ],
+)
+def test_new_adapters_missing_dependency(
+    monkeypatch: pytest.MonkeyPatch,
+    module_name: str,
+    export_method: str,
+) -> None:
+    real_import = importlib.import_module
+
+    def fake_import(name: str, package: str | None = None):
+        if name == module_name:
+            raise ImportError("missing")
+        return real_import(name, package)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import)
+
+    with pytest.raises(MissingOptionalDependencyError):
+        getattr(ToolRegistry([add]), export_method)()

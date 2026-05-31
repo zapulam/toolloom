@@ -50,3 +50,31 @@ def test_langgraph_adapter_returns_skill_tools() -> None:
 
     assert len(tools) == 1
     assert tools[0].name == "math_strategy"
+
+
+def test_pydantic_ai_adapter_exports_skill_tool() -> None:
+    pytest.importorskip("pydantic_ai")
+
+    tools = SkillRegistry([math_strategy]).to_pydantic_ai()
+
+    assert len(tools) == 1
+    assert tools[0].name == "math_strategy"
+
+
+def test_crewai_adapter_exports_skill_tool() -> None:
+    pytest.importorskip("crewai.tools")
+
+    tools = SkillRegistry([math_strategy]).to_crewai()
+
+    assert len(tools) == 1
+    assert tools[0].name == "math_strategy"
+    assert tools[0]._run() == "# Math Strategy"
+
+
+def test_google_adk_adapter_exports_skill_tool() -> None:
+    pytest.importorskip("google.adk.tools")
+
+    tools = SkillRegistry([math_strategy]).to_google_adk()
+
+    assert len(tools) == 1
+    assert tools[0].name == "math_strategy"

@@ -28,11 +28,17 @@ dependencies = [
 mcp = ["fastmcp>=2"]
 openai = ["openai-agents>=0.2"]
 langchain = ["langchain>=0.3", "langgraph>=0.2"]
+pydantic-ai = ["pydantic-ai"]
+crewai = ["crewai"]
+google-adk = ["google-adk"]
 all = [
   "fastmcp>=2",
   "openai-agents>=0.2",
   "langchain>=0.3",
   "langgraph>=0.2",
+  "pydantic-ai",
+  "crewai",
+  "google-adk",
 ]
 dev = [
   "pytest>=8",
